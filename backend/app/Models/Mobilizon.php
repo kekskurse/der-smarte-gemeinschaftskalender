@@ -246,8 +246,7 @@ class Mobilizon
         $query = Query::mutation("AcceptInvitation");
         $query->field("acceptInvitation")->attributes(['id' => $membershipId]);
         $query->acceptInvitation->fields(['id', 'role', 'invitedBy']);
-        $query->acceptInvitation->invitedBy->fields(['id', 'user']);
-        $query->acceptInvitation->invitedBy->user->fields(['id']);
+        $query->acceptInvitation->invitedBy->fields(['id']);
         if ($this->debug) var_dump($query->build());
 
         return $this->requestWithoutMedia($query->build());
@@ -339,7 +338,7 @@ class Mobilizon
     {
         $query = Query::mutation("RegisterPerson");
         $query->field("createPerson")->attributes($data);
-        $query->createPerson->fields(['name', 'preferredUsername']);
+        $query->createPerson->fields(['id', 'name', 'preferredUsername']);
 
         return $this->requestWithoutMedia($query->build());
     }

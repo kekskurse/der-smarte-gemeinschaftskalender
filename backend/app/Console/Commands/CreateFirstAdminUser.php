@@ -42,6 +42,7 @@ class CreateFirstAdminUser extends Command
         $user->email_verified_at = now();
         $user->is_active = true;
         $user->mobilizon_user_id = 1;
+        $user->mobilizon_profile_id = 3;
         $user->save();
         $this->info('First admin user created successfully.');
     }

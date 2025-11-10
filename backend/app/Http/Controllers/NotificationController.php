@@ -52,7 +52,6 @@ class NotificationController extends Controller
             try {
                 Mail::to($notification->email)
                     ->send(new SendNotifcationConfirm(
-                        $notification->email,
                         $notification->token
                     ));
             } catch (Exception $e) {
@@ -122,7 +121,7 @@ class NotificationController extends Controller
             return response()->json([
                 'message' => 'Benachrichtigung erfolgreich aktualisiert.',
                 'notification' => $notification
-            ], 200);
+            ]);
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'Fehler beim Aktualisieren der Benachrichtigung.',
@@ -134,8 +133,7 @@ class NotificationController extends Controller
     public function confirmEmailNotification(Request $request): JsonResponse
     {
         try {
-            $notification = Notification::where('email', $request->input('email'))
-                ->where('token', $request->input('verificationToken'))
+            $notification = Notification::where('token', $request->input('verificationToken'))
                 ->first();
 
             if (!$notification) {
@@ -150,7 +148,7 @@ class NotificationController extends Controller
             return response()->json([
                 'message' => 'Benachrichtigung erfolgreich bestätigt.',
                 'notification' => $notification
-            ], 200);
+            ]);
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'Fehler bei der Bestätigung der Benachrichtigung.',
@@ -162,8 +160,7 @@ class NotificationController extends Controller
     public function addEmailDisallowNotification(Request $request): JsonResponse
     {
         try {
-            $notification = Notification::where('email', $request->input('email'))
-                ->where('verification_token', $request->input('verificationToken'))
+            $notification = Notification::where('verification_token', $request->input('verificationToken'))
                 ->first();
 
             if (!$notification) {

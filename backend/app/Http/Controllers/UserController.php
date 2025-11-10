@@ -36,6 +36,7 @@ class UserController extends Controller implements HasMiddleware
             $user = auth()->user();
             $user->mobilizon_name = $name;
             $user->mobilizon_preferred_username = $preferredUsername;
+            $user->mobilizon_profile_id = $response['data']['createPerson']['id'];
             $user->save();
             return response()->json([
                 'message' => 'Person registered successfully',
@@ -132,7 +133,7 @@ class UserController extends Controller implements HasMiddleware
             return response()->json(['error' => 'Aktuelles Passwort ist falsch'], 400);
         }
 
-        $user->password = $validated['new_password'];
+        $user->password = Hash::make($validated['new_password']);
         $user->save();
 
         return response()->json([

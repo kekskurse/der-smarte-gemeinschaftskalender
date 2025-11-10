@@ -84,7 +84,6 @@ class AdminController extends Controller implements HasMiddleware
             $mresponse = $adminClient->adminUpdateUser([
                 'id' => $user->mobilizon_user_id,
                 'confirmed' => true,
-                'role' => Query::enum('ADMINISTRATOR')
             ]);
 
             if ($mclient->hasError($mresponse)) {
@@ -93,6 +92,18 @@ class AdminController extends Controller implements HasMiddleware
                     'user_id' => $user->id
                 ]);
                 return response()->json(['error' => 'Validierung des neuen Benutzers fehlgeschlagen'], 500);
+            }
+            $mresponseChangeRole = $adminClient->adminUpdateUser([
+                'id' => $user->mobilizon_user_id,
+                'role' => Query::enum('ADMINISTRATOR')
+            ]);
+
+            if ($mclient->hasError($mresponseChangeRole)) {
+                Log::error('Validierung des neuen Benutzers fehlgeschlagen', [
+                    'error' => $mclient->getError($mresponseChangeRole),
+                    'user_id' => $user->id
+                ]);
+                return response()->json(['error' => 'Rollen veränderung des neuen Benutzers fehlgeschlagen'], 500);
             }
             $user->is_active = true;
             $user->save();

@@ -4,29 +4,30 @@ namespace App\Http\Controllers;
 
 use App\Models\MaterialGeneratorValue;
 use App\Models\Mobilizon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Storage;
 
 class MaterialGeneratorValueController extends Controller implements HasMiddleware
 {
     public static function middleware()
     {
-        return ['auth'];
+        return [
+            'auth',
+            new Middleware('in_group', only: ['upsert']),
+        ];
     }
     public function upsert(Request $request)
     {
-        // TODO: check if user is part of group
-        $mobilizonGroupId = $request->input('mobilizon_group_id');
-        $mclient = Mobilizon::getInstance();
-        $group = $mclient->getGroup($mobilizonGroupId);
         $generatorValues = MaterialGeneratorValue::where('mobilizon_group_id', $request->input('mobilizon_group_id'))->first();
         $preferredUsername = $request->input('mobilizon_preferredusername');
         if (!$generatorValues) {
             $generatorValues = new MaterialGeneratorValue();
         }
         $generatorValues->mobilizon_preferredusername = $preferredUsername;
-        $generatorValues->mobilizon_group_id = $mobilizonGroupId;
+        $generatorValues->mobilizon_group_id = $request->input('mobilizon_group_id');
         $generatorValues->default_text_settings = $request->input('default_text_settings');
         $generatorValues->default_header_settings = $request->input('default_header_settings');
         $generatorValues->save();
@@ -46,14 +47,34 @@ class MaterialGeneratorValueController extends Controller implements HasMiddlewa
         return $generatorValues;
     }
 
-    public function show(Request $request)
+    public function show(Request $request): JsonResponse
     {
-        // TODO: check if user is part of group
-        if ($request->input('mobilizon_group_id')) {
-            return MaterialGeneratorValue::where('mobilizon_group_id', $request->input('mobilizon_group_id'))->first();
-        } else if ($request->input('mobilizon_preferredusername')) {
-            return MaterialGeneratorValue::where('mobilizon_preferredusername', $request->input('mobilizon_preferredusername'))->first();
+        $groupId = $request->input('mobilizon_group_id');
+        $preferredUsername = $request->input('mobilizon_preferredusername');
+
+
+        if (!$groupId && !$preferredUsername) {
+            return response()->json(['error' => 'mobilizon_group_id oder mobilizon_preferredusername sind erforderlich.'], 400);
         }
+
+        $generatorValues = $groupId
+            ? MaterialGeneratorValue::where('mobilizon_group_id', $groupId)->first()
+            : MaterialGeneratorValue::where('mobilizon_preferredusername', $preferredUsername)->first();
+
+        if (!$generatorValues && !$groupId) {
+            return response()->json(['data' => null]);
+        }
+
+        $groupId = $groupId ?? $generatorValues->mobilizon_group_id;
+
+        $mobilizon = Mobilizon::getInstance();
+        $groups = $mobilizon->getGroupsAsArray();
+
+        if (!in_array($groupId, array_column($groups, 'id'))) {
+            return response()->json(['error' => 'Du bist nicht Teil der Gruppe oder die Gruppe existiert nicht.'], 403);
+        }
+
+        return response()->json($generatorValues);
     }
 
     public function getImage(Request $request)

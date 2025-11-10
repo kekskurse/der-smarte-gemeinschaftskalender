@@ -42,7 +42,6 @@ class CustomResetPassword extends Notification
             ->subject('Passwort zurücksetzen')
             ->view('emails.resetPasswordMail', [
                 'resetToken' => $this->token,
-                'email' => $notifiable->email,
             ]);
     }
 

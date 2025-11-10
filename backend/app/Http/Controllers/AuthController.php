@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Controller;
 use App\Mail\SendConfirmEmail;
-use App\Mail\ResetPasswordEmail;
 use App\Models\Mobilizon;
 use App\Models\User;
+use DB;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -19,20 +20,19 @@ class AuthController extends Controller
     /**
      * Create a new AuthController instance.
      *
-     * @return void
      */
     public function __construct() {}
 
     /**
      * Get a JWT via given credentials.
      *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function login()
+    public function login(): JsonResponse
     {
         $credentials = request(['email', 'password']);
+        $token = auth()->attempt($credentials);
 
-        if (! $token = auth()->attempt($credentials)) {
+        if (!$token) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -53,11 +53,7 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function register(Request $request)
+    public function register(Request $request): JsonResponse
     {
         $valideInputs = $request->validate([
             'email' => 'required|email|unique:users,email',
@@ -103,7 +99,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function forgotPassword(Request $request)
+    public function forgotPassword(Request $request): JsonResponse
     {
         $validInputs = $request->validate([
             'email' => 'required|email',
@@ -126,7 +122,7 @@ class AuthController extends Controller
             : response()->json(['error' => 'Fehler beim Senden des Passwort-Zurücksetzen-Links'], 500);
     }
 
-    public function validateUser(Request $request)
+    public function validateUser(Request $request): JsonResponse
     {
         $verificationToken = $request->input('verificationToken');
 
@@ -155,38 +151,60 @@ class AuthController extends Controller
         return response()->json(['message' => 'User validated successfully']);
     }
 
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request): JsonResponse
     {
-        $validInputs = $request->validate([
+        $validated = $request->validate([
             'token' => 'required',
-            'email' => 'required|email',
             'password' => 'required|string|min:6|confirmed',
+            'password_confirmation' => 'required|string|min:6|same:password'
         ]);
 
-        if (!$validInputs) {
+        if (!$validated) {
             return response()->json(['error' => 'Fehlende oder ungültige Eingaben'], 422);
         }
 
+        $plainToken = $validated['token'];
+        $record = DB::table('password_reset_tokens')
+            ->get()
+            ->first(function ($row) use ($validated, $plainToken) {
+                return isset($row->token) && Hash::check($plainToken, $row->token);
+            });
+
+        if (!$record) {
+            return response()->json(['error' => 'Ungültiges oder abgelaufenes Token'], 400);
+        }
+
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            [
+                'email' => $record->email,
+                ...$request->only('password', 'token')
+            ],
             function ($user, $password) {
-                $user->password = $password;
+                $user->forceFill([
+                    'password' => Hash::make($password)
+                ])->setRememberToken(Str::random(60));
                 $user->setRememberToken(Str::random(60));
                 $user->save();
+
+                event(new PasswordReset($user));
             }
         );
 
         return $status === Password::PASSWORD_RESET
             ? response()->json(['message' => 'Passwort erfolgreich zurückgesetzt'])
-            : response()->json(['error' =>  'Fehler beim Zurücksetzen des Passworts'], 500);
+            : response()->json([
+                    'error' =>  'Fehler beim Zurücksetzen des Passworts',
+                    'status' => $status,
+                    'rp_record_email' => $record->email,
+                    'rp_record_token' => $record->token
+                ], 500);
     }
 
     /**
      * Get the authenticated User.
      *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function me()
+    public function me(): JsonResponse
     {
         return response()->json(auth()->user());
     }
@@ -194,9 +212,8 @@ class AuthController extends Controller
     /**
      * Log the user out (Invalidate the token).
      *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function logout()
+    public function logout(): JsonResponse
     {
         auth()->logout();
 
@@ -206,9 +223,8 @@ class AuthController extends Controller
     /**
      * Refresh a token.
      *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function refresh()
+    public function refresh(): JsonResponse
     {
         return $this->respondWithToken(auth()->refresh());
     }
@@ -216,11 +232,8 @@ class AuthController extends Controller
     /**
      * Get the token array structure.
      *
-     * @param  string $token
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
-    protected function respondWithToken($token)
+    protected function respondWithToken(string $token): JsonResponse
     {
         return response()->json([
             'access_token' => $token,

@@ -102,6 +102,12 @@ onBeforeUnmount(() => {
                     :class="{ 'is-active': editor?.isActive('italic') }"
                 />
                 <Icon
+                    name="underline"
+                    @click="editor?.chain().focus().toggleUnderline().run()"
+                    :disabled="!editor?.can().chain().focus().toggleUnderline().run()"
+                    :class="{ 'is-active': editor?.isActive('underline') }"
+                />
+                <Icon
                     name="strike"
                     @click="editor?.chain().focus().toggleStrike().run()"
                     :disabled="!editor?.can().chain().focus().toggleStrike().run()"

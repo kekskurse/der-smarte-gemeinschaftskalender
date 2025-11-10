@@ -16,15 +16,13 @@ class SendNotifcationConfirm extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $email;
     public $token;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($email, $token)
+    public function __construct($token)
     {
-        $this->email = $email;
         $this->token = $token;
     }
 

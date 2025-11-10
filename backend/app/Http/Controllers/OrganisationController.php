@@ -167,11 +167,10 @@ class OrganisationController extends Controller implements HasMiddleware
 
         $mclient = Mobilizon::getInstance();
         $mresponse = $mclient->inviteToGroup($groupId, $username);
-
         try {
             if (!$mclient->hasError($mresponse)) {
-                $inivtedUserId = $mresponse['data']['inviteMember']['actor']['user']['id'];
-                $user = User::where('mobilizon_user_id', $inivtedUserId)->first();
+                $inivtedUserId = $mresponse['data']['inviteMember']['actor']['id'];
+                $user = User::where('mobilizon_profile_id', $inivtedUserId)->first();
                 if ($user) {
                     Mail::to($user->email)
                         ->send(new SendOrganisationInviteToUserEmail($mresponse['data']['inviteMember']['parent']['name']));
@@ -201,14 +200,15 @@ class OrganisationController extends Controller implements HasMiddleware
 
             $mclient = Mobilizon::getInstance();
             $mresponse = $mclient->acceptGroupInvitation($membershipId);
+            $invitedById = $mresponse['data']['acceptInvitation']['invitedBy']['id'];
 
-            $invitedById = $mresponse['data']['acceptInvitation']['invitedBy']['user']['id'] ?? $mresponse['data']['acceptInvitation']['invitedBy']['id'];
-
-            $invitedByUser = User::where('mobilizon_user_id', $invitedById)->first();
+            $invitedByUser = User::where('mobilizon_profile_id', $invitedById)->first();
+            if (!$invitedByUser) {
+                return ['error' => 'Invited by user not found'];
+            }
 
             $mclientInvitedBy = Mobilizon::getInstance(false, $invitedByUser, true);
             $mresponse = $mclientInvitedBy->updateGroupMember($membershipId, Query::enum('ADMINISTRATOR'));
-
             return $mresponse;
         } catch (Exception $e) {
             Log::error('Error accepting invitation: ' . $e->getMessage());
@@ -225,8 +225,8 @@ class OrganisationController extends Controller implements HasMiddleware
 
         try {
             if (!$mclient->hasError($mresponse)) {
-                $userId = $mresponse['data']['removeMember']['actor']['user']['id'];
-                $user = User::where('mobilizon_user_id', $userId)->first();
+                $userId = $mresponse['data']['removeMember']['actor']['id'];
+                $user = User::where('mobilizon_profile_id', $userId)->first();
                 if ($user) {
                     Mail::to($user->email)
                         ->send(new SendOrganisationRemovedMembershipToUserEmail($mresponse['data']['removeMember']['parent']['name']));
