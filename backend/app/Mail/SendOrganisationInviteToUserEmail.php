@@ -21,7 +21,7 @@ class SendOrganisationInviteToUserEmail extends Mailable
     public function __construct($organisationName)
     {
         $this->organisationName = $organisationName;
-        $this->urlMyOrganisations = env('APP_URL') . 'app/organisation/my-organisations';
+        $this->urlMyOrganisations = env('APP_URL') . '/app/organisation/my-organisations';
     }
 
     /**

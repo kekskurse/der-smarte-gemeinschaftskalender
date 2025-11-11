@@ -21,7 +21,7 @@ class SendRequestOrganisationCreationEmail extends Mailable
     public function __construct($requestOrganisationNamen)
     {
         $this->requestOrganisationNamen = $requestOrganisationNamen;
-        $this->urlRequestedOrganisations = env('APP_URL') . 'app/admin/requested-organisations';
+        $this->urlRequestedOrganisations = env('APP_URL') . '/app/admin/requested-organisations';
     }
 
     /**
